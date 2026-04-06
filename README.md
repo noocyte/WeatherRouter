@@ -88,6 +88,92 @@ python run.py
 
 The app will start at **http://localhost:8000**. Open it in your browser and start planning routes!
 
+### Alternative: Run with Docker Compose
+
+A ready-to-use `docker-compose.yml` is included with every configuration option documented. To get started:
+
+1. Edit `docker-compose.yml` — replace `YOUR_DOCKERHUB_USERNAME` with your Docker Hub username and adjust any settings
+2. Run:
+
+```sh
+docker compose up
+```
+
+The app will be available at **http://localhost:8000**.
+
+The compose file includes all available configuration with comments explaining each option:
+
+```yaml
+services:
+  weatherrouter:
+    image: YOUR_DOCKERHUB_USERNAME/weatherrouter:latest
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      # ── Server ────────────────────────────────────────────
+      # Host and port inside the container (you shouldn't need to change these)
+      - HOST=0.0.0.0
+      - PORT=8000
+
+      # ── Routing provider ──────────────────────────────────
+      # "osrm"   — Free, no API key, public demo server (default)
+      # "google" — Paid, requires API key, real-time closures + traffic
+      - ROUTING_PROVIDER=osrm
+      - OSRM_BASE_URL=https://router.project-osrm.org
+      # - GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+
+      # ── Weather provider ──────────────────────────────────
+      # "open_meteo" — Free, no API key, batched requests (default)
+      # "yr"         — Free, requires identification per TOS, ideal for Nordic
+      - WEATHER_PROVIDER=open_meteo
+      - OPEN_METEO_BASE_URL=https://api.open-meteo.com
+      # - YR_CONTACT_INFO=github.com/youruser/weatherrouter contact@example.com
+
+      # ── Geocoding ─────────────────────────────────────────
+      - NOMINATIM_BASE_URL=https://nominatim.openstreetmap.org
+
+    restart: unless-stopped
+```
+
+See the full `docker-compose.yml` in the repo for detailed comments on every option.
+
+#### Run with `docker run` instead
+
+If you prefer not to use Compose:
+
+```sh
+docker run -p 8000:8000 YOUR_DOCKERHUB_USERNAME/weatherrouter:latest
+```
+
+Pass configuration with `-e` flags or `--env-file`:
+
+```sh
+docker run -p 8000:8000 \
+  -e WEATHER_PROVIDER=yr \
+  -e YR_CONTACT_INFO="github.com/youruser/weatherrouter contact@example.com" \
+  YOUR_DOCKERHUB_USERNAME/weatherrouter:latest
+```
+
+### Build and push to Docker Hub
+
+A helper script is included for building, tagging, and pushing the image:
+
+```sh
+# Build only (auto-tags with date + git SHA)
+./docker-build-push.sh
+
+# Build with a specific version tag
+./docker-build-push.sh --tag 2.1.0
+
+# Build and push to Docker Hub
+export DOCKER_USERNAME=yourusername
+./docker-build-push.sh --tag 2.1.0 --push
+```
+
+This will push both `yourusername/weatherrouter:2.1.0` and `yourusername/weatherrouter:latest` to Docker Hub. Run `./docker-build-push.sh --help` for all options.
+
 ### 3. (Optional) Configure via environment variables
 
 Create a `.env` file in the project root:
@@ -141,6 +227,11 @@ PORT=8000
 ```
 weatherrouter/
 ├── run.py                          # Entry point — starts the FastAPI server
+├── Dockerfile                      # Multi-stage production Docker image
+├── docker-compose.yml              # Docker Compose with all config options
+├── docker-build-push.sh            # Build, tag, and push image to Docker Hub
+├── .dockerignore                   # Files excluded from Docker build context
+├── .env.example                    # Example environment variable configuration
 ├── backend/
 │   ├── main.py                     # FastAPI app, CORS, static file serving
 │   ├── config.py                   # Settings from env vars / .env

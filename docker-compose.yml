@@ -1,0 +1,89 @@
+# ──────────────────────────────────────────────────────────────
+# WeatherRouter — Docker Compose example
+#
+# Quick start:
+#   1. Copy this file (or use it as-is)
+#   2. Replace YOUR_DOCKERHUB_USERNAME below with your Docker Hub username
+#   3. Run:  docker compose up
+#   4. Open: http://localhost:8000
+#
+# All environment variables below show their default values.
+# Uncomment and change any line to customise your deployment.
+# ──────────────────────────────────────────────────────────────
+
+services:
+  weatherrouter:
+    # Replace YOUR_DOCKERHUB_USERNAME with your Docker Hub username,
+    # e.g. image: janedoe/weatherrouter:latest
+    image: YOUR_DOCKERHUB_USERNAME/weatherrouter:latest
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      # ── Server ────────────────────────────────────────────
+      # Host address the server binds to inside the container.
+      # You should not need to change this.
+      - HOST=0.0.0.0
+
+      # Port the server listens on inside the container.
+      # If you change this, update the "ports" mapping above to match.
+      # Example — to expose the app on port 3000 instead of 8000:
+      #   1. Set PORT=3000
+      #   2. Change the ports mapping to "3000:3000"
+      - PORT=8000
+
+      # ── Routing provider ──────────────────────────────────
+      # Which routing engine to use for driving directions.
+      # Options:
+      #   "osrm"   — OSRM (default). Free, no API key. Uses the public
+      #              demo server. Does not account for real-time closures.
+      #   "google" — Google Directions API. Paid, requires an API key.
+      #              Accounts for real-time closures and traffic.
+      - ROUTING_PROVIDER=osrm
+
+      # OSRM server URL. Only used when ROUTING_PROVIDER=osrm.
+      # Default points to the public OSRM demo server.
+      - OSRM_BASE_URL=https://router.project-osrm.org
+
+      # Google Maps Directions API key.
+      # Required only when ROUTING_PROVIDER=google.
+      # Get one at: https://console.cloud.google.com/apis/credentials
+      # - GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+
+      # ── Weather provider ──────────────────────────────────
+      # Which weather service to use for route forecasts.
+      # Options:
+      #   "open_meteo" — Open-Meteo (default). Free, no API key,
+      #                  sends a single batched request for all points.
+      #   "yr"         — MET Norway / Yr.no. Free, but requires
+      #                  identification per their Terms of Service.
+      #                  One request per point; ideal for Nordic forecasts.
+      #                  TOS: https://developer.yr.no/doc/TermsOfService/
+      - WEATHER_PROVIDER=open_meteo
+
+      # Open-Meteo API URL. Only used when WEATHER_PROVIDER=open_meteo.
+      - OPEN_METEO_BASE_URL=https://api.open-meteo.com
+
+      # MET Norway (Yr.no) contact information.
+      # REQUIRED by their TOS when WEATHER_PROVIDER=yr.
+      # Must be an app URL or email so MET can contact you if there are
+      # problems. Without this the client still works but violates the TOS.
+      # Example: "github.com/youruser/weatherrouter contact@example.com"
+      # - YR_CONTACT_INFO=github.com/youruser/weatherrouter contact@example.com
+
+      # ── Geocoding ─────────────────────────────────────────
+      # Nominatim server URL for place-name search.
+      # Default points to the public OpenStreetMap Nominatim server.
+      - NOMINATIM_BASE_URL=https://nominatim.openstreetmap.org
+
+    # ── Container health check ────────────────────────────────
+    # Already defined in the Dockerfile, but you can override it here.
+    # healthcheck:
+    #   test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/providers')"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   start_period: 10s
+    #   retries: 3
+
+    restart: unless-stopped
