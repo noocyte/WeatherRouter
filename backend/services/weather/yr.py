@@ -425,6 +425,7 @@ class YrClient(WeatherClient):
             weather_description=description,
             weather_symbol=emoji,
             wind_speed_kmh=wind_speed_kmh,
+            is_peak=sp.is_peak,
         )
 
     # ------------------------------------------------------------------
@@ -460,6 +461,7 @@ class YrClient(WeatherClient):
             weather_description="Weather data unavailable",
             weather_symbol="❓",
             wind_speed_kmh=0,
+            is_peak=sp.is_peak,
         )
 
 

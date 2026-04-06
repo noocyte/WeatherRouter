@@ -77,6 +77,9 @@ class WeatherPoint(BaseModel):
     )
     weather_symbol: str = Field("", description="Weather emoji symbol")
     wind_speed_kmh: float = Field(0, description="Wind speed in km/h")
+    is_peak: bool = Field(
+        False, description="Whether this is a mountain pass peak point"
+    )
 
 
 class TireRecommendation(BaseModel):

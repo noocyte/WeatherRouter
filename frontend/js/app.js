@@ -62,6 +62,7 @@
     toastContainer: document.getElementById("toast-container"),
     departureInput: document.getElementById("departure-input"),
     weatherAttribution: document.getElementById("weather-attribution"),
+    mobileAttribution: document.getElementById("mobile-attribution"),
   };
 
   var departurePicker = null;
@@ -580,8 +581,62 @@
     state.selectedRouteIndex = 0;
   }
 
+  /**
+   * On mobile screens (≤640px), reduce the number of weather markers shown
+   * while always preserving peaks (mountain passes), temperature extremes,
+   * notable weather events, and the start/end of the route.
+   */
+  function thinWeatherPointsForMobile(weatherPoints) {
+    if (window.innerWidth > 640 || weatherPoints.length <= 8) {
+      return weatherPoints;
+    }
+
+    var targetCount = 8;
+    var kept = new Set();
+
+    // Always keep first and last points
+    kept.add(0);
+    kept.add(weatherPoints.length - 1);
+
+    // Always keep peaks, notable weather, and find temperature extremes
+    var minTempIdx = 0;
+    var maxTempIdx = 0;
+    weatherPoints.forEach(function (wp, i) {
+      if (wp.is_peak) kept.add(i);
+      if (wp.snowfall_cm > 0) kept.add(i);
+      if (wp.temperature_c <= 0 && wp.precipitation_mm > 0) kept.add(i);
+      if (wp.temperature_c < weatherPoints[minTempIdx].temperature_c)
+        minTempIdx = i;
+      if (wp.temperature_c > weatherPoints[maxTempIdx].temperature_c)
+        maxTempIdx = i;
+    });
+    kept.add(minTempIdx);
+    kept.add(maxTempIdx);
+
+    // Fill remaining slots evenly from the leftover points
+    var remaining = targetCount - kept.size;
+    if (remaining > 0) {
+      var candidates = [];
+      for (var i = 0; i < weatherPoints.length; i++) {
+        if (!kept.has(i)) candidates.push(i);
+      }
+      var step = candidates.length / (remaining + 1);
+      for (var j = 1; j <= remaining && j * step < candidates.length; j++) {
+        kept.add(candidates[Math.round(j * step)]);
+      }
+    }
+
+    // Return kept points in original (distance) order
+    var result = [];
+    weatherPoints.forEach(function (wp, i) {
+      if (kept.has(i)) result.push(wp);
+    });
+    return result;
+  }
+
   function drawWeatherMarkers(weatherPoints) {
     clearWeatherMarkers();
+    weatherPoints = thinWeatherPointsForMobile(weatherPoints);
     weatherPoints.forEach(function (wp) {
       var icon = L.divIcon({
         className: "weather-marker",
@@ -874,9 +929,12 @@
   // Clear Everything
   // ---------------------------------------------------------------------------
 
-  function updateWeatherAttribution(routes) {
-    if (!dom.weatherAttribution) return;
+  function setAttributionHtml(html) {
+    if (dom.weatherAttribution) dom.weatherAttribution.innerHTML = html;
+    if (dom.mobileAttribution) dom.mobileAttribution.innerHTML = html;
+  }
 
+  function updateWeatherAttribution(routes) {
     // Find the first route with weather data to determine the provider
     var provider = "";
     for (var i = 0; i < routes.length; i++) {
@@ -890,16 +948,18 @@
       provider.toLowerCase().indexOf("yr") !== -1 ||
       provider.toLowerCase().indexOf("met norway") !== -1
     ) {
-      dom.weatherAttribution.innerHTML =
+      setAttributionHtml(
         "\uD83C\uDF26\uFE0F Weather data by " +
-        '<a href="https://www.met.no/en" target="_blank" rel="noopener">MET Norway</a>' +
-        " / " +
-        '<a href="https://developer.yr.no/" target="_blank" rel="noopener">Yr.no</a>' +
-        ', licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>';
+          '<a href="https://www.met.no/en" target="_blank" rel="noopener">MET Norway</a>' +
+          " / " +
+          '<a href="https://developer.yr.no/" target="_blank" rel="noopener">Yr.no</a>' +
+          ', licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>',
+      );
     } else if (provider) {
-      dom.weatherAttribution.innerHTML =
+      setAttributionHtml(
         "\uD83C\uDF26\uFE0F Weather data by " +
-        '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>';
+          '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>',
+      );
     }
   }
 
@@ -933,11 +993,11 @@
     state.map.setView(CONFIG.map.center, CONFIG.map.zoom);
 
     // Reset weather attribution to default
-    if (dom.weatherAttribution) {
-      dom.weatherAttribution.innerHTML =
-        "\uD83C\uDF26\uFE0F Weather data by " +
-        '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>';
-    }
+    setAttributionHtml(
+      "\uD83C\uDF26\uFE0F Weather data by " +
+        '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>' +
+        " &middot; Click map to set points",
+    );
   }
 
   // ---------------------------------------------------------------------------

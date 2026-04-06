@@ -192,6 +192,7 @@ class OpenMeteoClient(WeatherClient):
                     weather_description=description,
                     weather_symbol=symbol,
                     wind_speed_kmh=round(wind, 1) if wind is not None else 0,
+                    is_peak=sp.is_peak,
                 )
             )
 
@@ -248,4 +249,5 @@ class OpenMeteoClient(WeatherClient):
             weather_description="Weather data unavailable",
             weather_symbol="❓",
             wind_speed_kmh=0,
+            is_peak=sp.is_peak,
         )
