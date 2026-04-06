@@ -6,6 +6,7 @@ from backend.config import settings
 from backend.services.weather.analyzer import analyze_weather, build_tire_recommendation
 from backend.services.weather.base import WeatherClient
 from backend.services.weather.sampler import sample_route
+from backend.services.weather.sun import build_sunglasses_advisory
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,11 @@ async def get_route_weather(
     recommendation = build_tire_recommendation(weather_points)
     weather_summary = analyze_weather(
         weather_points, departure_time_str, recommendation
+    )
+
+    # 4. Sunglasses / glare advisory
+    weather_summary.sunglasses_advisory = build_sunglasses_advisory(
+        weather_points, route_geometry
     )
 
     weather_summary.weather_provider = client.name

@@ -89,7 +89,7 @@ class OpenMeteoClient(WeatherClient):
         params = {
             "latitude": lats,
             "longitude": lngs,
-            "hourly": "temperature_2m,apparent_temperature,precipitation,snowfall,weathercode,windspeed_10m",
+            "hourly": "temperature_2m,apparent_temperature,precipitation,snowfall,snow_depth,weathercode,windspeed_10m",
             "start_date": start_date,
             "end_date": end_date,
             "timezone": "auto",
@@ -175,6 +175,7 @@ class OpenMeteoClient(WeatherClient):
             snow = self._get_hourly_val(hourly, "snowfall", hour_idx)
             code = int(self._get_hourly_val(hourly, "weathercode", hour_idx))
             wind = self._get_hourly_val(hourly, "windspeed_10m", hour_idx)
+            snow_depth = self._get_hourly_val(hourly, "snow_depth", hour_idx)
 
             description, symbol = WMO_CODES.get(code, ("Unknown", "❓"))
 
@@ -188,6 +189,7 @@ class OpenMeteoClient(WeatherClient):
                     feels_like_c=round(feels, 1) if feels is not None else None,
                     precipitation_mm=round(precip, 1) if precip is not None else 0,
                     snowfall_cm=round(snow, 1) if snow is not None else 0,
+                    snow_depth_m=round(snow_depth, 2) if snow_depth is not None else 0,
                     weather_code=code,
                     weather_description=description,
                     weather_symbol=symbol,

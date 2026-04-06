@@ -71,6 +71,7 @@ class WeatherPoint(BaseModel):
     )
     precipitation_mm: float = Field(0, description="Precipitation in mm")
     snowfall_cm: float = Field(0, description="Snowfall in cm")
+    snow_depth_m: float = Field(0, description="Snow depth on the ground in meters")
     weather_code: int = Field(0, description="WMO weather code")
     weather_description: str = Field(
         "", description="Human-readable weather description"
@@ -94,6 +95,15 @@ class TireRecommendation(BaseModel):
     icon: str = Field("", description="Emoji icon for the recommendation")
 
 
+class SunglassesAdvisory(BaseModel):
+    """Advisory on whether sunglasses are recommended for the drive."""
+
+    needed: bool = Field(False, description="Whether sunglasses are recommended")
+    title: str = Field("", description="Short advisory title")
+    message: str = Field("", description="Detailed explanation")
+    icon: str = Field("☀️", description="Emoji icon for the advisory")
+
+
 class RouteWeather(BaseModel):
     """Complete weather analysis for a route."""
 
@@ -103,6 +113,10 @@ class RouteWeather(BaseModel):
     )
     weather_points: list[WeatherPoint] = Field(default_factory=list)
     tire_recommendation: TireRecommendation
+    sunglasses_advisory: Optional[SunglassesAdvisory] = Field(
+        default=None,
+        description="Sunglasses / glare advisory (populated when weather is available)",
+    )
     min_temperature_c: float = Field(0)
     max_temperature_c: float = Field(0)
     has_snow: bool = Field(False)

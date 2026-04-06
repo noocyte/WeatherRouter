@@ -828,7 +828,31 @@
           escapeHtml(rec.message) +
           "</div>" +
           "</div>";
+      }
 
+      // Sunglasses advisory
+      if (route.weather && route.weather.sunglasses_advisory) {
+        var sun = route.weather.sunglasses_advisory;
+        var sunClass = sun.needed ? "sunglasses-needed" : "sunglasses-ok";
+        card.innerHTML +=
+          '<div class="sunglasses-advisory ' +
+          sunClass +
+          '">' +
+          '<div class="sunglasses-advisory-header">' +
+          '<span class="sunglasses-advisory-icon">' +
+          sun.icon +
+          "</span>" +
+          '<span class="sunglasses-advisory-title">' +
+          escapeHtml(sun.title) +
+          "</span>" +
+          "</div>" +
+          '<div class="sunglasses-advisory-message">' +
+          escapeHtml(sun.message) +
+          "</div>" +
+          "</div>";
+      }
+
+      if (route.weather && route.weather.tire_recommendation) {
         // Weather summary bar
         var w = route.weather;
         card.innerHTML +=

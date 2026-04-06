@@ -405,6 +405,17 @@ class YrClient(WeatherClient):
         is_snow_or_sleet = "snow" in base_symbol or "sleet" in base_symbol
         snowfall_cm = round(precip_mm * 1.0, 1) if is_snow_or_sleet else 0.0
 
+        # --- Snow depth inference (Yr does not provide snow_depth) ---
+        # If it's currently snowing or very cold with recent snow symbols,
+        # assume some snow cover on the ground.
+        if snowfall_cm > 0 or (is_snow_or_sleet and temp_c <= 2.0):
+            inferred_snow_depth_m = max(0.05, snowfall_cm / 100.0)
+        elif temp_c <= -2.0 and precip_mm == 0:
+            # Sub-freezing and dry — existing snow cover likely persists
+            inferred_snow_depth_m = 0.02
+        else:
+            inferred_snow_depth_m = 0.0
+
         # --- Feels-like / wind chill ---
         feels_like_c: Optional[float] = None
         if temp_c <= 10.0 and wind_speed_kmh > 4.8:
@@ -421,6 +432,7 @@ class YrClient(WeatherClient):
             feels_like_c=feels_like_c,
             precipitation_mm=round(precip_mm, 1),
             snowfall_cm=snowfall_cm,
+            snow_depth_m=round(inferred_snow_depth_m, 3),
             weather_code=wmo_code,
             weather_description=description,
             weather_symbol=emoji,
@@ -457,6 +469,7 @@ class YrClient(WeatherClient):
             feels_like_c=None,
             precipitation_mm=0,
             snowfall_cm=0,
+            snow_depth_m=0,
             weather_code=-1,
             weather_description="Weather data unavailable",
             weather_symbol="❓",
