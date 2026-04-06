@@ -108,7 +108,7 @@ The compose file includes all available configuration with comments explaining e
 ```yaml
 services:
   weatherrouter:
-    image: YOUR_DOCKERHUB_USERNAME/weatherrouter:latest
+    image: noocyte/weatherrouter:latest
 
     ports:
       - "8000:8000"
