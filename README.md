@@ -1,25 +1,66 @@
 # 🧭 WeatherRouter — Nordic Route Planner
 
-A weather-aware route planning app for the Nordic countries. Plan driving routes between locations, get warnings about seasonally closed mountain passes, and — in a future release — get recommendations on whether you need winter or summer tires based on real-time weather conditions along your route.
+A weather-aware route planning app for the Nordic countries. Plan driving routes between locations, see real-time weather forecasts along your route, get tire recommendations based on conditions, and receive warnings about seasonally closed Norwegian mountain passes.
 
-![Status](https://img.shields.io/badge/status-V1.1-blue)
+![Status](https://img.shields.io/badge/status-V2.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
-## Features (V1)
+## Features
 
-- 🗺️ **Interactive map** centered on the Nordics (Norway, Sweden, Denmark, Finland, Iceland)
-- 📍 **Click-to-place** start and end markers, or search for locations by name
-- 🛣️ **Multiple route alternatives** displayed in distinct colors
-- 🔀 **Route comparison** — click on a route card or polyline to highlight it
-- ⚠️ **Mountain pass warnings** — detects when routes pass through any of Norway's 85 seasonal mountain passes (kolonnestrekning) using Vegvesen's NVDB database
-- 🏔️ **Season-aware severity** — warnings are high in winter (Nov–Apr), medium in shoulder season (May/Oct), low in summer
-- 🗺️ **Visual closure overlay** — affected road stretches highlighted as dashed lines on the map
-- 🔎 **Geocoding** powered by OpenStreetMap Nominatim (free, no API key)
-- 🚗 **Routing** powered by OSRM (free, no API key) or Google Directions API (paid, supports real-time closures)
-- 🔌 **Provider abstraction** — swap routing providers via config or API parameter
+### 🗺️ Interactive Map & Routing
+
+- **Interactive Leaflet map** centered on the Nordics (Norway, Sweden, Denmark, Finland, Iceland)
+- **Click-to-place** start and end markers, or search for locations by name
+- **Draggable markers** — reposition start/end by dragging, with automatic reverse geocoding
+- **Multiple route alternatives** displayed in distinct colors with layered border/fill polylines
+- **Route comparison** — click on a route card or polyline to highlight it; non-selected routes dim to 50% opacity
+- **Autocomplete geocoding** with debounced search, keyboard navigation (↑/↓/Enter/Escape), and dropdown results
+
+### 🌦️ Weather Forecasting
+
+- **Weather sampling** at 15–20 points along each route (~25–30 km intervals)
+- **Arrival-time-aware forecasts** — weather is fetched for the estimated time you'll pass each point, based on your departure time
+- **Weather markers on the map** — pill-shaped markers showing weather emoji + temperature at each sample point
+- **Detailed weather popups** — click any marker to see temperature, feels-like, elevation, arrival time, precipitation, snowfall, and wind speed
+- **Mountain pass peak injection** — extra weather samples at the midpoint of detected mountain passes
+- **Weather summary** on each route card showing temperature range and condition tags (❄️ Snow, 🌧️ Rain, 🧊 Frost)
+- Powered by [Open-Meteo](https://open-meteo.com/) (free, no API key required)
+
+### 🛞 Tire Recommendations
+
+Automatic tire-type analysis based on weather conditions along your route:
+
+| Verdict | Condition | Icon |
+| --- | --- | --- |
+| **Summer tires OK** | All temps > 7°C, no snow or ice | ✅ |
+| **Winter tires advisory** | Temps between 3–7°C, or precipitation below 5°C | ⚠️ |
+| **Winter tires recommended** | Any snow along route, or min temp < 3°C | 🟠 |
+| **Winter tires required** | Freezing rain, sub-zero temps with precipitation, or >2 cm snow | 🔴 |
+
+Recommendations include specifics: coldest temperature, distance/elevation where conditions are worst, and snow amounts.
+
+### ⚠️ Mountain Pass Warnings
+
+- Detects when routes pass through any of Norway's **85 seasonal mountain passes** (kolonnestrekning) using Vegvesen's NVDB database
+- **Season-aware severity** — high in winter (Nov–Apr), medium in shoulder season (May/Oct), low in summer (Jun–Sep)
+- **Visual closure overlay** — affected road stretches highlighted as colored dashed lines on the map (red/orange/yellow by severity)
+- Warning banners displayed on route cards with severity-appropriate styling
+
+### 🕐 Departure Time Picker
+
+- **24-hour time format** via [Flatpickr](https://flatpickr.js.org/) date/time picker
+- **15-minute increments** for easy time selection
+- Defaults to current time + 1 hour, rounded to the nearest hour
+- Departure time drives the weather forecast — forecasts are calculated for your estimated arrival at each point along the route
+
+### 📱 Responsive Design
+
+- **Desktop**: Sidebar (350px) + full-height map layout
+- **Tablet** (≤ 860px): Sidebar narrows to 300px
+- **Mobile** (≤ 640px): Vertical stack layout — sidebar on top (max 45vh), map below
 
 ---
 
@@ -62,6 +103,9 @@ OSRM_BASE_URL=https://router.project-osrm.org
 # Nominatim server URL (default: public OSM server)
 NOMINATIM_BASE_URL=https://nominatim.openstreetmap.org
 
+# Open-Meteo API URL (default: public server)
+OPEN_METEO_BASE_URL=https://api.open-meteo.com
+
 # Server bind address
 HOST=0.0.0.0
 PORT=8000
@@ -73,9 +117,13 @@ PORT=8000
 
 1. **Set your start point** — click on the map or type a place name in the "Start location" field
 2. **Set your end point** — click again on the map or type in the "End location" field
-3. **Click "Plan Route"** — the app will calculate one or more route alternatives
-4. **Compare routes** — click on route cards in the sidebar or on the map polylines to highlight them
-5. **Drag markers** — reposition start/end by dragging the markers, then re-plan
+3. **Set departure time** — use the 24-hour time picker to choose when you're leaving (defaults to 1 hour from now)
+4. **Click "Plan Route"** — the app calculates one or more route alternatives with weather and warnings
+5. **Compare routes** — click on route cards in the sidebar or on the map polylines to highlight them
+6. **Explore weather** — click weather markers on the map to see detailed forecasts at each point
+7. **Check tire recommendations** — each route card shows whether you need winter or summer tires
+8. **Drag markers** — reposition start/end by dragging the markers, then re-plan
+9. **Clear** — reset everything with the Clear button to start over
 
 ---
 
@@ -89,7 +137,7 @@ weatherrouter/
 │   ├── config.py                   # Settings from env vars / .env
 │   ├── requirements.txt            # Python dependencies
 │   ├── models/
-│   │   └── route.py                # Pydantic models (Route, RouteWarning, Coordinate, etc.)
+│   │   └── route.py                # Pydantic models (Route, Weather, Warnings, etc.)
 │   ├── routers/
 │   │   └── routes.py               # API endpoints (/api/routes, /api/geocode, etc.)
 │   └── services/
@@ -100,24 +148,28 @@ weatherrouter/
 │       ├── road_closures/
 │       │   ├── nvdb.py             # NVDB API client — fetches mountain pass data
 │       │   └── checker.py          # Route closure checker with grid-based spatial index
-│       └── weather/                # Weather service (V2 placeholder)
+│       └── weather/
+│           ├── __init__.py         # Orchestrator — sample → fetch → analyze pipeline
+│           ├── sampler.py          # Route geometry → sample points with arrival times
+│           ├── open_meteo.py       # Open-Meteo API client with WMO code mapping
+│           └── analyzer.py         # Tire recommendation engine + weather summary
 └── frontend/
-    ├── index.html                  # Main HTML page
+    ├── index.html                  # Main HTML page (Leaflet, Flatpickr, app.js)
     ├── css/
-    │   └── style.css               # Nordic-inspired styling
+    │   └── style.css               # Nordic-inspired responsive styling
     └── js/
-        └── app.js                  # Map, markers, geocoding, routing UI
+        └── app.js                  # Map, markers, geocoding, routing, weather UI
 ```
 
 ---
 
 ## API Endpoints
 
-| Method | Path             | Description                                      |
-| ------ | ---------------- | ------------------------------------------------ |
-| POST   | `/api/routes`    | Calculate routes between two coordinates          |
-| GET    | `/api/geocode`   | Search for places by name (Nordic countries)      |
-| GET    | `/api/providers` | List available routing providers and their status |
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/routes` | Calculate routes with weather and warnings |
+| GET | `/api/geocode` | Search for places by name (Nordic countries) |
+| GET | `/api/providers` | List available routing providers and their status |
 
 ### POST `/api/routes`
 
@@ -126,31 +178,72 @@ weatherrouter/
 {
   "start": { "lat": 59.9139, "lng": 10.7522 },
   "end": { "lat": 60.3913, "lng": 5.3221 },
-  "provider": "osrm"
+  "provider": "osrm",
+  "departure_time": "2025-01-15T08:00:00Z"
 }
 ```
+
+The `provider` and `departure_time` fields are optional. If `departure_time` is omitted, weather forecasting is skipped. If `provider` is omitted, the configured default (OSRM) is used.
 
 **Response:**
 ```json
 {
   "routes": [
     {
-      "geometry": { "type": "LineString", "coordinates": [[10.75, 59.91], ...] },
+      "geometry": { "type": "LineString", "coordinates": [[10.75, 59.91], "..."] },
       "distance_km": 462.5,
       "duration_minutes": 385.2,
       "summary": "E16, E39",
       "color": "#2196F3",
-      "steps": [...],
+      "steps": [
+        {
+          "instruction": "Head north on E18",
+          "distance_km": 2.3,
+          "duration_minutes": 3.1,
+          "start_location": { "lat": 59.91, "lng": 10.75 },
+          "end_location": { "lat": 59.93, "lng": 10.75 }
+        }
+      ],
       "warnings": [
         {
           "type": "mountain_pass",
           "severity": "high",
           "title": "Mountain Pass: Suleskarvegen",
-          "message": "This route passes through Suleskarvegen (FV450), a Norwegian mountain pass...",
+          "message": "This route passes through Suleskarvegen (FV450)...",
           "road_reference": "FV450",
-          "geometry": { "type": "MultiLineString", "coordinates": [...] }
+          "geometry": { "type": "MultiLineString", "coordinates": ["..."] }
         }
-      ]
+      ],
+      "weather": {
+        "departure_time": "2025-01-15T08:00:00+00:00",
+        "min_temperature_c": -5.2,
+        "max_temperature_c": 3.1,
+        "has_snow": true,
+        "has_rain": false,
+        "has_freezing_conditions": true,
+        "tire_recommendation": {
+          "verdict": "winter_required",
+          "title": "Winter Tires Required",
+          "message": "Snowy conditions with 4.2 cm total snowfall...",
+          "icon": "🔴"
+        },
+        "weather_points": [
+          {
+            "location": { "lat": 59.95, "lng": 10.70 },
+            "distance_km": 5.0,
+            "elevation_m": 150.0,
+            "arrival_time": "2025-01-15T08:15:00+00:00",
+            "temperature_c": 1.2,
+            "feels_like_c": -2.1,
+            "precipitation_mm": 0.5,
+            "snowfall_cm": 0.3,
+            "weather_code": 71,
+            "weather_description": "Slight snow fall",
+            "weather_symbol": "❄️",
+            "wind_speed_kmh": 15.0
+          }
+        ]
+      }
     }
   ],
   "provider": "osrm"
@@ -159,21 +252,29 @@ weatherrouter/
 
 ---
 
-## Mountain Pass Detection
+## How It Works
 
-WeatherRouter cross-references every computed route against **85 Norwegian mountain pass / convoy stretches** (kolonnestrekning) from Vegvesen's National Road Database (NVDB).
+### Weather Forecasting Pipeline
 
-**How it works:**
+1. **Sample** — The route geometry is divided into 15–20 evenly spaced points (~25–30 km apart). Arrival time at each point is estimated via linear interpolation of total duration from departure time.
+2. **Peak injection** — If mountain pass warnings are detected, the midpoint of each pass geometry is injected as an extra sample point.
+3. **Fetch** — A single batched request to Open-Meteo retrieves hourly forecasts for all sample points. The closest hourly slot to each arrival time is matched.
+4. **Analyze** — Temperature, precipitation, snowfall, and WMO weather codes are evaluated to produce a tire recommendation and route weather summary.
 
-1. On the first route request, the app fetches all Kolonnestrekning geometries from the NVDB API (cached for 24 hours)
-2. Each route is checked against these geometries using a fast grid-based spatial index
-3. If the route passes within ~300m of a mountain pass, a warning is attached with:
-   - **Severity** based on the current month: 🔴 high (Nov–Apr), 🟠 medium (May/Oct), 🟢 low (Jun–Sep)
-   - **Pass name and road reference** (e.g., "Suleskarvegen (FV450)")
-   - **GeoJSON geometry** of the affected stretch for map display
-4. The frontend renders warnings as banners on route cards and dashed overlays on the map
+### Mountain Pass Detection
 
-**Example:** Planning Oslo → Bryne in winter will warn about Suleskarvegen (FV450), a mountain pass typically closed November–May.
+1. On the first route request, the app fetches all Kolonnestrekning geometries from the NVDB API (cached in memory for 24 hours).
+2. Each route is checked against these geometries using a fast **grid-based spatial index** — rasterizes both geometries into ~300m cells for O(N+M) proximity detection.
+3. If the route passes within ~300m of a mountain pass, a warning is attached with severity based on the current month, the pass name and road reference, and GeoJSON geometry for map display.
+
+### Graceful Degradation
+
+The app is designed to always return routes, even when optional services fail:
+
+- **Weather fetch failure** → route returned without weather data (logged, not raised)
+- **Road closure check failure** → route returned without warnings (logged, not raised)
+- **Open-Meteo timeout** → fallback weather points with zeroed values
+- **Flatpickr CDN failure** → falls back to native browser date/time input
 
 ---
 
@@ -200,59 +301,46 @@ Get an API key at [Google Cloud Console](https://console.cloud.google.com/apis/c
 
 1. Create a new class in `backend/services/routing/` that extends `RoutingProvider`
 2. Implement `name`, `is_available()`, and `get_routes()`
-3. Register it in the factory function in `backend/services/routing/__init__.py`
+3. Register it in the `_PROVIDERS` dict in `backend/services/routing/__init__.py`
 
 ---
 
 ## Roadmap
 
-### V1.2 — Real-Time Road Closures
+### V2.1 — Real-Time Road Status
 
 - [ ] Register for Vegvesen's DATEX II node to get real-time open/closed/convoy status
 - [ ] Show live status on mountain pass warnings (🟢 Open / 🔴 Closed / 🟡 Convoy)
 - [ ] Swedish and Finnish road closure data integration
 
-### V2 — Weather Analysis 🌦️
+### V2.2 — Enhanced Weather
 
-The core differentiator: overlay weather conditions along the route to answer **"Do I need winter tires?"**
-
-- [ ] Sample weather at intervals along each route (every ~50 km)
-- [ ] Estimate arrival time at each sample point based on departure time
-- [ ] Query [Open-Meteo](https://open-meteo.com/) (free, no API key) for forecasts
-- [ ] Analyze conditions: temperature, precipitation type, ice risk
-- [ ] Tire recommendation engine with severity levels:
-  - ✅ Summer tires OK
-  - ⚠️ Winter tires advisory
-  - 🟠 Winter tires recommended
-  - 🔴 Winter tires required
-- [ ] Color-code route segments on the map (green → yellow → red)
-- [ ] Weather timeline: "At km 120 near Lillehammer, expect -2°C and snow at ~14:30"
-- [ ] Compare routes: "Route A is safe with summer tires, Route B requires winter tires"
+- [ ] Color-coded route segments on the map (green → yellow → red) based on conditions
+- [ ] Route comparison summary: "Route A is safe with summer tires, Route B requires winter tires"
+- [ ] Road surface temperature data integration
 
 ### V3 — Future Ideas
 
-- [ ] Elevation profiling (mountain pass awareness)
-- [ ] Road surface temperature data integration
+- [ ] Elevation profiling and visualization
 - [ ] Departure time optimization ("Leave at 11:00 instead of 08:00 to avoid icy conditions")
 - [ ] Multi-day trip planning
-- [ ] Mobile-responsive design improvements
 - [ ] User accounts and saved routes
-- [ ] Real-time road condition reports (e.g., Statens vegvesen API for Norway)
+- [ ] Real-time road condition reports from additional Nordic road authorities
 
 ---
 
 ## Tech Stack
 
-| Layer            | Technology                     | Cost     |
-| ---------------- | ------------------------------ | -------- |
-| Backend          | Python, FastAPI, httpx         | Free     |
-| Frontend         | Vanilla JS, Leaflet.js         | Free     |
-| Routing          | OSRM (default)                 | Free     |
-| Routing          | Google Directions (optional)   | Paid     |
-| Road Closures    | Vegvesen NVDB API              | Free     |
-| Geocoding        | OpenStreetMap Nominatim        | Free     |
-| Weather          | Open-Meteo (V2)                | Free     |
-| Map Tiles        | OpenStreetMap                  | Free     |
+| Layer | Technology | Cost |
+| --- | --- | --- |
+| Backend | Python, FastAPI, httpx, Pydantic | Free |
+| Frontend | Vanilla JS, Leaflet.js, Flatpickr | Free |
+| Routing | OSRM (default) | Free |
+| Routing | Google Directions (optional) | Paid |
+| Weather | Open-Meteo API | Free |
+| Road Closures | Vegvesen NVDB API | Free |
+| Geocoding | OpenStreetMap Nominatim | Free |
+| Map Tiles | OpenStreetMap | Free |
 
 ---
 
