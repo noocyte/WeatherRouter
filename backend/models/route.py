@@ -95,6 +95,9 @@ class RouteWeather(BaseModel):
     """Complete weather analysis for a route."""
 
     departure_time: str = Field(..., description="Departure time (ISO 8601)")
+    weather_provider: str = Field(
+        "", description="Name of the weather provider that produced this data"
+    )
     weather_points: list[WeatherPoint] = Field(default_factory=list)
     tire_recommendation: TireRecommendation
     min_temperature_c: float = Field(0)

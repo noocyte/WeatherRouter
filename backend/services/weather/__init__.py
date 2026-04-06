@@ -1,8 +1,41 @@
 """Weather analysis service for routes."""
 
+import logging
+
+from backend.config import settings
 from backend.services.weather.analyzer import analyze_weather, build_tire_recommendation
-from backend.services.weather.open_meteo import OpenMeteoClient
+from backend.services.weather.base import WeatherClient
 from backend.services.weather.sampler import sample_route
+
+logger = logging.getLogger(__name__)
+
+
+def get_weather_client() -> WeatherClient:
+    """Create a weather client based on the configured provider.
+
+    Returns:
+        A WeatherClient instance (OpenMeteoClient or YrClient).
+
+    Raises:
+        ValueError: If the configured provider is unknown.
+    """
+    provider = settings.WEATHER_PROVIDER.lower().strip()
+
+    if provider == "open_meteo":
+        from backend.services.weather.open_meteo import OpenMeteoClient
+
+        return OpenMeteoClient()
+
+    elif provider == "yr":
+        from backend.services.weather.yr import YrClient
+
+        return YrClient(contact_info=settings.YR_CONTACT_INFO or "")
+
+    else:
+        raise ValueError(
+            f"Unknown weather provider: '{provider}'. "
+            f"Supported providers: 'open_meteo', 'yr'."
+        )
 
 
 async def get_route_weather(
@@ -25,8 +58,9 @@ async def get_route_weather(
         route_geometry, distance_km, duration_minutes, departure_time_str, warnings
     )
 
-    # 2. Fetch weather for all sample points from Open-Meteo
-    client = OpenMeteoClient()
+    # 2. Fetch weather using the configured provider
+    client = get_weather_client()
+    logger.info("Using weather provider: %s", client.name)
     weather_points = await client.get_weather_for_points(sample_points)
 
     # 3. Analyze and produce tire recommendation
@@ -34,5 +68,7 @@ async def get_route_weather(
     weather_summary = analyze_weather(
         weather_points, departure_time_str, recommendation
     )
+
+    weather_summary.weather_provider = client.name
 
     return weather_summary

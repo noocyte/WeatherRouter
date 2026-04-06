@@ -27,7 +27,9 @@ A weather-aware route planning app for the Nordic countries. Plan driving routes
 - **Detailed weather popups** — click any marker to see temperature, feels-like, elevation, arrival time, precipitation, snowfall, and wind speed
 - **Mountain pass peak injection** — extra weather samples at the midpoint of detected mountain passes
 - **Weather summary** on each route card showing temperature range and condition tags (❄️ Snow, 🌧️ Rain, 🧊 Frost)
-- Powered by [Open-Meteo](https://open-meteo.com/) (free, no API key required)
+- **Two weather providers** to choose from:
+  - [Open-Meteo](https://open-meteo.com/) — free, no API key, batched requests (default)
+  - [MET Norway / Yr.no](https://developer.yr.no/) — free, requires identification per [Terms of Service](https://developer.yr.no/doc/TermsOfService/), ideal for Nordic forecasts
 
 ### 🛞 Tire Recommendations
 
@@ -103,8 +105,15 @@ OSRM_BASE_URL=https://router.project-osrm.org
 # Nominatim server URL (default: public OSM server)
 NOMINATIM_BASE_URL=https://nominatim.openstreetmap.org
 
+# Weather provider ("open_meteo" or "yr")
+WEATHER_PROVIDER=open_meteo
+
 # Open-Meteo API URL (default: public server)
 OPEN_METEO_BASE_URL=https://api.open-meteo.com
+
+# MET Norway (Yr.no) contact info — REQUIRED by their TOS when using "yr" provider
+# Must be an app URL or email so MET can reach you if there are problems
+# YR_CONTACT_INFO=github.com/youruser/weatherrouter contact@example.com
 
 # Server bind address
 HOST=0.0.0.0
@@ -149,9 +158,11 @@ weatherrouter/
 │       │   ├── nvdb.py             # NVDB API client — fetches mountain pass data
 │       │   └── checker.py          # Route closure checker with grid-based spatial index
 │       └── weather/
-│           ├── __init__.py         # Orchestrator — sample → fetch → analyze pipeline
+│           ├── __init__.py         # Orchestrator + provider factory
+│           ├── base.py             # Abstract WeatherClient base class
 │           ├── sampler.py          # Route geometry → sample points with arrival times
-│           ├── open_meteo.py       # Open-Meteo API client with WMO code mapping
+│           ├── open_meteo.py       # Open-Meteo provider (free, batched requests)
+│           ├── yr.py               # MET Norway / Yr.no provider (free, TOS-compliant)
 │           └── analyzer.py         # Tire recommendation engine + weather summary
 └── frontend/
     ├── index.html                  # Main HTML page (Leaflet, Flatpickr, app.js)
@@ -254,6 +265,15 @@ The `provider` and `departure_time` fields are optional. If `departure_time` is 
 
 ## How It Works
 
+### Weather Providers
+
+The app supports swappable weather providers via a `WeatherClient` abstraction (same pattern as routing providers). Set `WEATHER_PROVIDER` in your `.env` to choose:
+
+| Provider | Config value | API key | Batching | Best for |
+| --- | --- | --- | --- | --- |
+| Open-Meteo | `open_meteo` (default) | None | Single batched request | General use, simplest setup |
+| MET Norway (Yr.no) | `yr` | None (but requires identification) | One request per point | Nordic-focused, high-quality Nordic data |
+
 ### Weather Forecasting Pipeline
 
 1. **Sample** — The route geometry is divided into 15–20 evenly spaced points (~25–30 km apart). Arrival time at each point is estimated via linear interpolation of total duration from departure time.
@@ -267,13 +287,33 @@ The `provider` and `departure_time` fields are optional. If `departure_time` is 
 2. Each route is checked against these geometries using a fast **grid-based spatial index** — rasterizes both geometries into ~300m cells for O(N+M) proximity detection.
 3. If the route passes within ~300m of a mountain pass, a warning is attached with severity based on the current month, the pass name and road reference, and GeoJSON geometry for map display.
 
+### MET Norway (Yr.no) TOS Compliance
+
+When using the `yr` provider, the app automatically complies with the [MET Norway Terms of Service](https://developer.yr.no/doc/TermsOfService/):
+
+- **Identification** — Sends a `User-Agent` header with app name + your contact info (configured via `YR_CONTACT_INFO`). You **must** set this so MET can contact you if there are issues.
+- **Caching** — Respects the `Expires` response header; cached responses are reused until expiry.
+- **Conditional requests** — Uses `If-Modified-Since` with the `Last-Modified` header to avoid re-downloading unchanged data.
+- **Rate limiting** — Caps concurrent requests at 10 with a small delay between requests (well under the 20 req/s limit).
+- **Coordinate precision** — Truncates all coordinates to 4 decimal places as required.
+- **Backend proxy** — All API calls go through the FastAPI backend (not directly from the browser), as recommended by MET.
+- **Attribution** — Weather data from MET Norway is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). If you deploy this app publicly, you must give appropriate credit.
+
+To enable:
+
+```env
+WEATHER_PROVIDER=yr
+YR_CONTACT_INFO=github.com/youruser/weatherrouter contact@example.com
+```
+
 ### Graceful Degradation
 
 The app is designed to always return routes, even when optional services fail:
 
 - **Weather fetch failure** → route returned without weather data (logged, not raised)
 - **Road closure check failure** → route returned without warnings (logged, not raised)
-- **Open-Meteo timeout** → fallback weather points with zeroed values
+- **Weather API timeout** → fallback weather points with zeroed values (both providers)
+- **Yr.no stale cache** → serves cached data when the API is unreachable
 - **Flatpickr CDN failure** → falls back to native browser date/time input
 
 ---
@@ -337,7 +377,8 @@ Get an API key at [Google Cloud Console](https://console.cloud.google.com/apis/c
 | Frontend | Vanilla JS, Leaflet.js, Flatpickr | Free |
 | Routing | OSRM (default) | Free |
 | Routing | Google Directions (optional) | Paid |
-| Weather | Open-Meteo API | Free |
+| Weather | Open-Meteo API (default) | Free |
+| Weather | MET Norway / Yr.no (optional) | Free (CC BY 4.0) |
 | Road Closures | Vegvesen NVDB API | Free |
 | Geocoding | OpenStreetMap Nominatim | Free |
 | Map Tiles | OpenStreetMap | Free |

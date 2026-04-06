@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from backend.models.route import Coordinate, WeatherPoint
+from backend.services.weather.base import WeatherClient
 from backend.services.weather.sampler import SamplePoint
 
 logger = logging.getLogger(__name__)
@@ -44,12 +45,16 @@ WMO_CODES = {
 }
 
 
-class OpenMeteoClient:
+class OpenMeteoClient(WeatherClient):
     """Client for the Open-Meteo weather forecast API (free, no API key)."""
 
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
     HEADERS = {"User-Agent": "WeatherRouter/1.0"}
     TIMEOUT = 30.0
+
+    @property
+    def name(self) -> str:
+        return "Open-Meteo"
 
     async def get_weather_for_points(
         self, sample_points: list[SamplePoint]

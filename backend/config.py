@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com"
     """Base URL for the Open-Meteo weather API."""
 
+    WEATHER_PROVIDER: str = "open_meteo"
+    """Which weather provider to use ("open_meteo" or "yr")."""
+
+    YR_CONTACT_INFO: Optional[str] = None
+    """Contact information for the MET Norway API User-Agent header (required by their TOS).
+    Example: 'myapp.com contact@myapp.com' or 'github.com/user/weatherrouter'."""
+
     HOST: str = "0.0.0.0"
     """Host address the server binds to."""
 

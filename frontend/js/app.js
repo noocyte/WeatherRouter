@@ -61,6 +61,7 @@
     routesList: document.getElementById("routes-list"),
     toastContainer: document.getElementById("toast-container"),
     departureInput: document.getElementById("departure-input"),
+    weatherAttribution: document.getElementById("weather-attribution"),
   };
 
   var departurePicker = null;
@@ -551,6 +552,9 @@
       drawWeatherMarkers(routes[0].weather.weather_points);
     }
 
+    // Update weather attribution based on the provider
+    updateWeatherAttribution(routes);
+
     // Render route cards in sidebar
     renderRouteCards(routes);
   }
@@ -870,6 +874,35 @@
   // Clear Everything
   // ---------------------------------------------------------------------------
 
+  function updateWeatherAttribution(routes) {
+    if (!dom.weatherAttribution) return;
+
+    // Find the first route with weather data to determine the provider
+    var provider = "";
+    for (var i = 0; i < routes.length; i++) {
+      if (routes[i].weather && routes[i].weather.weather_provider) {
+        provider = routes[i].weather.weather_provider;
+        break;
+      }
+    }
+
+    if (
+      provider.toLowerCase().indexOf("yr") !== -1 ||
+      provider.toLowerCase().indexOf("met norway") !== -1
+    ) {
+      dom.weatherAttribution.innerHTML =
+        "\uD83C\uDF26\uFE0F Weather data by " +
+        '<a href="https://www.met.no/en" target="_blank" rel="noopener">MET Norway</a>' +
+        " / " +
+        '<a href="https://developer.yr.no/" target="_blank" rel="noopener">Yr.no</a>' +
+        ', licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>';
+    } else if (provider) {
+      dom.weatherAttribution.innerHTML =
+        "\uD83C\uDF26\uFE0F Weather data by " +
+        '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>';
+    }
+  }
+
   function clearAll() {
     // Remove markers
     if (state.startMarker) {
@@ -898,6 +931,13 @@
 
     // Reset map view
     state.map.setView(CONFIG.map.center, CONFIG.map.zoom);
+
+    // Reset weather attribution to default
+    if (dom.weatherAttribution) {
+      dom.weatherAttribution.innerHTML =
+        "\uD83C\uDF26\uFE0F Weather data by " +
+        '<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>';
+    }
   }
 
   // ---------------------------------------------------------------------------
