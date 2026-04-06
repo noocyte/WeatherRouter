@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# WeatherRouter - Build, tag, and push Docker image to Docker Hub
+# WeatherRouter - Build, tag, and push container image
+# Works with both Podman and Docker (auto-detects, prefers Podman).
 #
 # Usage:
 #   ./docker-build-push.sh                       # build only
 #   ./docker-build-push.sh --push                # build + push to Docker Hub
 #   ./docker-build-push.sh --tag 2.1.0           # build with a specific version tag
 #   ./docker-build-push.sh --tag 2.1.0 --push    # build + tag + push
+#   ./docker-build-push.sh --engine docker       # force Docker instead of Podman
 #
 # Environment variables:
 #   DOCKER_USERNAME   Docker Hub username (required for push)
 #   IMAGE_NAME        Image name (default: weatherrouter)
+#   CONTAINER_ENGINE  Container engine to use ("podman" or "docker")
 
 # Defaults
 IMAGE_NAME="${IMAGE_NAME:-weatherrouter}"
 TAG=""
 PUSH=false
+ENGINE=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -29,16 +33,22 @@ while [[ $# -gt 0 ]]; do
             PUSH=true
             shift
             ;;
+        --engine)
+            ENGINE="$2"
+            shift 2
+            ;;
         --help|-h)
-            echo "Usage: $0 [--tag VERSION] [--push]"
+            echo "Usage: $0 [--tag VERSION] [--push] [--engine podman|docker]"
             echo ""
             echo "Options:"
-            echo "  --tag VERSION   Version tag for the image (e.g. 2.1.0)"
-            echo "  --push          Push the image to Docker Hub after building"
+            echo "  --tag VERSION          Version tag for the image (e.g. 2.1.0)"
+            echo "  --push                 Push the image to Docker Hub after building"
+            echo "  --engine podman|docker  Force a specific container engine"
             echo ""
             echo "Environment variables:"
-            echo "  DOCKER_USERNAME  Docker Hub username (required for --push)"
-            echo "  IMAGE_NAME       Image name (default: weatherrouter)"
+            echo "  DOCKER_USERNAME   Docker Hub username (required for --push)"
+            echo "  IMAGE_NAME        Image name (default: weatherrouter)"
+            echo "  CONTAINER_ENGINE  Container engine (default: auto-detect)"
             exit 0
             ;;
         *)
@@ -48,6 +58,29 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Auto-detect container engine: prefer podman, fall back to docker
+if [[ -z "$ENGINE" ]]; then
+    ENGINE="${CONTAINER_ENGINE:-}"
+fi
+if [[ -z "$ENGINE" ]]; then
+    if command -v podman &>/dev/null; then
+        ENGINE="podman"
+    elif command -v docker &>/dev/null; then
+        ENGINE="docker"
+    else
+        echo "ERROR: Neither podman nor docker found in PATH."
+        exit 1
+    fi
+fi
+
+# Validate engine exists
+if ! command -v "$ENGINE" &>/dev/null; then
+    echo "ERROR: '$ENGINE' is not installed or not in PATH."
+    exit 1
+fi
+
+echo "Using container engine: $ENGINE"
 
 # Resolve version tag
 if [[ -z "$TAG" ]]; then
@@ -67,7 +100,7 @@ echo "============================================="
 echo ""
 
 # Build
-docker build \
+$ENGINE build \
     --tag "${LOCAL_IMAGE}" \
     --tag "${LOCAL_LATEST}" \
     .
@@ -95,13 +128,13 @@ if [[ "$PUSH" == true ]]; then
     echo "============================================="
     echo ""
 
-    # Tag for Docker Hub
-    docker tag "${LOCAL_IMAGE}" "${REMOTE_IMAGE}"
-    docker tag "${LOCAL_LATEST}" "${REMOTE_LATEST}"
+    # Tag for registry
+    $ENGINE tag "${LOCAL_IMAGE}" "${REMOTE_IMAGE}"
+    $ENGINE tag "${LOCAL_LATEST}" "${REMOTE_LATEST}"
 
     # Push both tags
-    docker push "${REMOTE_IMAGE}"
-    docker push "${REMOTE_LATEST}"
+    $ENGINE push "${REMOTE_IMAGE}"
+    $ENGINE push "${REMOTE_LATEST}"
 
     echo ""
     echo "Push complete:"
