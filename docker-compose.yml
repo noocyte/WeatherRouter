@@ -17,7 +17,7 @@ services:
   weatherrouter:
     # Replace YOUR_DOCKERHUB_USERNAME with your Docker Hub username,
     # e.g. image: janedoe/weatherrouter:latest
-    image: YOUR_DOCKERHUB_USERNAME/weatherrouter:latest
+    image: noocyte/weatherrouter:latest
 
     ports:
       - "8000:8000"
